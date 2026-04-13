@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Study Hours Visualiser</title>
+
+    <style>
+        /* ============================================
+           GENERAL PAGE STYLING
+           ============================================ */
+
+        /* Set a clean base: readable font, centred content, soft background */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        /* Main heading: centred, dark colour */
+        h1 {
+            text-align: center;
+            color: #222;
+        }
+
+        /* Description text: centred, slightly muted */
+        p {
+            text-align: center;
+            color: #555;
+        }
+
+        /* ============================================
+           INPUT SECTION
+           ============================================ */
+
+        /* 
+            White card with padding and rounded corners.
+            This groups the inputs visually so they feel 
+            like one unit, not seven scattered fields.
+        */
+        #input-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            /* STEP 5: subtle shadow to match the chart card */
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        /* 
+            Each input row: label on the left, input on the right.
+            display: flex puts them side by side.
+            align-items: center keeps them vertically aligned.
+            margin-bottom adds breathing room between rows.
+        */
+        .input-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        /* 
+            Labels get a fixed width so all inputs line up neatly.
+            Without this, shorter day names (Mon) and longer ones 
+            (Wednesday) would push inputs to different positions.
+        */
+        .input-row label {
+            width: 120px;
+            font-weight: bold;
+        }
+
+        /* 
+            Inputs: consistent width, readable size, subtle border.
+            padding makes the text inside not feel cramped.
+        */
+        .input-row input {
+            width: 80px;
+            padding: 6px 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* STEP 5: highlight the active input so the user 
+           can see which field they are editing */
+        .input-row input:focus {
+            outline: none;
+            border-color: #2c6e49;
+            box-shadow: 0 0 0 2px rgba(44, 110, 73, 0.2);
+        }
+
+        /* ============================================
+           BUTTON
+           ============================================ */
+
+        /* 
+            Full-width button so it is easy to click.
+            cursor: pointer shows the hand icon on hover.
+        */
+        #generate-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #2c6e49;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        /* Darken the button slightly on hover so it feels clickable */
+        #generate-btn:hover {
+            background-color: #245a3a;
+        }
+
+        /* ============================================
+           CHART AREA
+           ============================================ */
+
+        /* 
+            The container where bars will appear.
+            display: flex arranges the bars side by side.
+            align-items: flex-end makes bars grow upward from 
+            a shared baseline (like a real chart).
+            gap puts equal space between each bar.
+            min-height reserves visible space even when empty.
+            The dashed border shows you where the chart lives 
+            before any bars exist - we will remove it later.
+        */
+        #chart-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            gap: 10px;
+            min-height: 250px;
+            padding: 20px 10px 0 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            /* STEP 5: replaced dashed border with a subtle shadow 
+               and a solid bottom line that acts as the chart baseline */
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+            border-bottom: 2px solid #333;
+        }
+
+        /* ============================================
+           BAR STYLING (used in Step 4)
+           ============================================ */
+
+        /* 
+            Each bar is a column in the chart.
+            We define the look now so it is ready when 
+            JavaScript creates bar elements later.
+
+            - width: 60px gives each bar a fixed width
+            - background-color: the bar colour
+            - border-radius: rounds the top corners only
+            - text-align: centres the label underneath
+            - transition: animates height changes smoothly
+
+            The height will be set by JavaScript - we do not 
+            set it here because it depends on user input.
+        */
+
+        /* 
+            STEP 4 ADDITION:
+            The wrapper for one bar and its day label.
+            text-align centres the label under the bar.
+        */
+        .bar-column {
+            text-align: center;
+        }
+
+        .bar {
+            width: 60px;
+            background-color: #2c6e49;
+            border-radius: 6px 6px 0 0;
+            text-align: center;
+            transition: height 0.3s ease, background-color 0.2s ease;
+            /* STEP 5: minimum height so 0-hour days still show 
+               a thin sliver rather than disappearing completely */
+            min-height: 4px;
+        }
+
+        /* STEP 5: lighten the bar on hover so the chart feels interactive */
+        .bar:hover {
+            background-color: #38895e;
+        }
+
+        /* The day name label below each bar */
+        .bar-label {
+            margin-top: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* The hour value shown inside each bar */
+        .bar-value {
+            /* STEP 5: display block so it fills the bar width,
+               added font-weight for readability against the green */
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            padding-top: 6px;
+        }
+    </style>
+
+</head>
+<body>
+
+    <h1>Weekly Study Hours Visualiser</h1>
+    <p>Enter your study hours for each day, then click "Generate Chart" to see your week.</p>
+
+    <!-- 
+        CHANGED FROM STEP 1: 
+        Replaced the <br> line breaks with <div class="input-row"> wrappers.
+        This lets CSS arrange each label-input pair neatly using flexbox.
+    -->
+    <div id="input-section">
+
+        <div class="input-row">
+            <label for="monday">Monday:</label>
+            <input type="number" id="monday" min="0" max="24" value="0">
+        </div>
+
+        <div class="input-row">
+            <label for="tuesday">Tuesday:</label>
+            <input type="number" id="tuesday" min="0" max="24" value="0">
+        </div>
+
+        <div class="input-row">
+            <label for="wednesday">Wednesday:</label>
+            <input type="number" id="wednesday" min="0" max="24" value="0">
+        </div>
+
+        <div class="input-row">
+            <label for="thursday">Thursday:</label>
+            <input type="number" id="thursday" min="0" max="24" value="0">
+        </div>
+
+        <div class="input-row">
+            <label for="friday">Friday:</label>
+            <input type="number" id="friday" min="0" max="24" value="0">
+        </div>
+
+        <div class="input-row">
+            <label for="saturday">Saturday:</label>
+            <input type="number" id="saturday" min="0" max="24" value="0">
+        </div>
+
+        <div class="input-row">
+            <label for="sunday">Sunday:</label>
+            <input type="number" id="sunday" min="0" max="24" value="0">
+        </div>
+
+    </div>
+
+    <button id="generate-btn">Generate Chart</button>
+
+    <div id="chart-container"></div>
+
+    <!-- STEP 5: total hours summary, hidden until chart is generated -->
+    <p id="total-display" style="display: none; text-align: center; font-size: 15px; margin-top: 14px; color: #333;">
+    </p>
+
+    <!-- STEP 5: diligence statement for portfolio submission -->
+    <footer style="margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 12px; color: #888;">
+        <p><strong>Diligence Statement:</strong> This visualisation was co-created through active collaboration 
+        with Claude (Opus 4.6) as part of the IS6144 AI-Assisted Application Development module at UCC. 
+        The final code reflects my understanding and intentions. I maintain full responsibility for the 
+        content, its accuracy, and its presentation.</p>
+    </footer>
+
+    <!-- 
+        STEP 3: JavaScript
+        Placed at the bottom of the body so that all HTML elements 
+        above already exist by the time this code runs. If this 
+        script were in the <head>, the elements wouldn't exist yet 
+        and document.getElementById would return null.
+    -->
+    <script>
+
+        // ============================================
+        // 1. DEFINE THE DAYS
+        // ============================================
+        // An array of objects — one per day.
+        // Each object holds:
+        //   - label: the display name (used later for chart labels)
+        //   - id: matches the id attribute on the <input> element
+        //
+        // This avoids writing seven separate getElementById calls.
+        // We loop through this array instead.
+
+        const days = [
+            { label: "Mon", id: "monday" },
+            { label: "Tue", id: "tuesday" },
+            { label: "Wed", id: "wednesday" },
+            { label: "Thu", id: "thursday" },
+            { label: "Fri", id: "friday" },
+            { label: "Sat", id: "saturday" },
+            { label: "Sun", id: "sunday" }
+        ];
+
+
+        // ============================================
+        // 2. THE FUNCTION THAT READS AND VALIDATES
+        // ============================================
+        // This function does three things:
+        //   a) Reads the value from each input field
+        //   b) Validates it (must be a number between 0 and 24)
+        //   c) Returns a clean array of objects with labels and hours
+        //
+        // It returns null if any value is invalid, so the calling 
+        // code knows not to proceed.
+
+        function getStudyData() {
+
+            const data = [];
+
+            for (let i = 0; i < days.length; i++) {
+
+                // Find the input element by its id
+                const input = document.getElementById(days[i].id);
+
+                // parseFloat converts the string from the input into a number.
+                // Input values are always strings, even with type="number".
+                const hours = parseFloat(input.value);
+
+                // --- Validation ---
+                // isNaN(hours): did the user type something that isn't a number?
+                // hours < 0:    negative hours don't make sense
+                // hours > 24:   there are only 24 hours in a day
+                if (isNaN(hours) || hours < 0 || hours > 24) {
+                    alert(days[i].label + ": please enter a number between 0 and 24.");
+                    input.focus();  // put the cursor back in the problem field
+                    return null;    // stop here — don't return partial data
+                }
+
+                // If valid, add this day's data to the array
+                data.push({
+                    label: days[i].label,
+                    hours: hours
+                });
+            }
+
+            return data;
+        }
+
+
+        // ============================================
+        // 3. GENERATE THE CHART
+        // ============================================
+        // This function takes the validated data array and 
+        // builds the bar chart inside the chart container.
+        //
+        // Each bar is made of three elements:
+        //
+        //   <div class="bar-column">      ← wrapper for one bar + its label
+        //     <div class="bar">           ← the coloured bar itself
+        //       <span class="bar-value">  ← the number shown inside the bar
+        //     </div>
+        //     <div class="bar-label">     ← the day name underneath
+        //   </div>
+        //
+        // The bar's height is calculated as a percentage of the 
+        // tallest bar, so the chart always fills the available space.
+
+        function generateChart(data) {
+
+            const container = document.getElementById("chart-container");
+
+            // Clear any previous chart.
+            // Without this, clicking the button again would add 
+            // a second set of bars instead of replacing the first.
+            container.innerHTML = "";
+
+            // --- Find the maximum value ---
+            // We need this to calculate proportional heights.
+            // If someone studied 8 hours max, that bar should be 
+            // the tallest — and all others scale relative to it.
+            let maxHours = 0;
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].hours > maxHours) {
+                    maxHours = data[i].hours;
+                }
+            }
+
+            // If every value is 0, there's nothing to draw.
+            // Set maxHours to 1 to avoid dividing by zero below.
+            if (maxHours === 0) {
+                maxHours = 1;
+            }
+
+            // The maximum height a bar can be, in pixels.
+            // This matches the min-height we set on the container in CSS.
+            const maxBarHeight = 220;
+
+            // --- Build one bar per day ---
+            for (let i = 0; i < data.length; i++) {
+
+                // Calculate this bar's height as a proportion of the max.
+                // Example: if maxHours is 8 and this day is 4,
+                //   4 / 8 = 0.5, so 0.5 * 220 = 110px tall.
+                const barHeight = (data[i].hours / maxHours) * maxBarHeight;
+
+                // --- Create the wrapper column ---
+                const column = document.createElement("div");
+                column.className = "bar-column";
+
+                // --- Create the bar itself ---
+                const bar = document.createElement("div");
+                bar.className = "bar";
+                // Set the height directly on this element.
+                // We use style.height because the height depends on 
+                // user input — it can't be set in CSS ahead of time.
+                bar.style.height = barHeight + "px";
+
+                // --- Create the hour value label ---
+                const value = document.createElement("span");
+                value.className = "bar-value";
+                value.textContent = data[i].hours + "h";
+
+                // --- Create the day label ---
+                const label = document.createElement("div");
+                label.className = "bar-label";
+                label.textContent = data[i].label;
+
+                // --- Assemble the pieces ---
+                // Put the value inside the bar
+                bar.appendChild(value);
+                // Put the bar inside the column
+                column.appendChild(bar);
+                // Put the label inside the column (below the bar)
+                column.appendChild(label);
+                // Put the whole column into the chart container
+                container.appendChild(column);
+            }
+        }
+
+
+        // ============================================
+        // 4. CONNECT THE BUTTON
+        // ============================================
+        // When clicked: read data, validate, then generate the chart.
+
+        const button = document.getElementById("generate-btn");
+
+        button.addEventListener("click", function () {
+
+            const data = getStudyData();
+
+            // If validation failed, data is null — stop here
+            if (data === null) {
+                return;
+            }
+
+            // Log to console (kept from Step 3 — useful for debugging)
+            console.log("Study data:", data);
+
+            // Build the chart
+            generateChart(data);
+
+            // STEP 5: Calculate total and show it below the chart
+            let total = 0;
+            for (let i = 0; i < data.length; i++) {
+                total = total + data[i].hours;
+            }
+            const totalDisplay = document.getElementById("total-display");
+            totalDisplay.textContent = "Total this week: " + total + " hours";
+            totalDisplay.style.display = "block";
+        });
+
+    </script>
+
+</body>
+</html>
